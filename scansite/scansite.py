@@ -9,11 +9,26 @@
 # heard from this site:
 # http://www-rohan.sdsu.edu/~gawron/python_for_ss/course_core/book_draft/web/urllib.html
 # that it should be helpful for retriving web resources.
-# And browsing through the documentation never hurts:
 # https://docs.python.org/3/library/urllib.html
 
 import urllib;
 from urllib.parse import urlparse
+from urllib.request import urlopen
+from urllib.error import HTTPError
+from urllib.error import URLError
+
+# This variable sitting up here by itself will later
+# become the base url from which all other web pages are
+# gathered. We will also limit our results to pages served
+# from the same base.
+baseURL = "";
+
+# We also just want this to be a short implementation, not
+# accidentally overrun the web. So let's give it a max depth of
+# 5 for starters. Max depth means it takes more than 3 clicks
+# to get to a page from the page our original baseURL, we will
+# ignore it.
+maxDepth = 5;
 
 # We are going to need some helper functions for this scanner
 # to work. We put all these functions at the top of the file
@@ -47,7 +62,9 @@ def validateUrl(url):
     # netloc for now.
 
     urlParts = urlparse(url)
-
+    
+    # Let's show the user that we are checking the scheme and the
+    # network location as part of our validation
     print("Checking scheme: {0}".format(urlParts.scheme))
     print("Checking network location: {0}".format(urlParts.netloc))
 
@@ -61,6 +78,47 @@ def validateUrl(url):
         print("The network location does not seem to be set in the given URL.")
         return False
     return True;
+
+
+# This function we are going to write is going to scan a URL,
+# treating it as the base url for all future URLs which we will
+# scan. That is, every other URL scanned should be in the same
+# directory or a subdirectory of the given URL.
+def scanBase(url):
+    try:
+        webPage = urlopen(url)
+
+        # We get the URL a second time here in case a redirect was used.
+        finalURL = webPage.geturl()
+        if (finalURL.lower() == url.lower()):
+            print("Scanning...")
+
+        # If there was a redirect, let's check with our user if it 
+        # is OK to use it.
+        elif (input("A redirect was used to show the page: {0}. Type 'y' to continue: ".format(finalURL)) == 'y'):
+            print("Scanning...")
+        else:
+            print("Goodbye")
+
+    # If we get a HTTP error, let's show it here. This includes things
+    # like receiving a 404 error
+    except HTTPError as err:
+        print(format(err))
+
+    # Maybe there is still something wrong with the URL, despite our
+    # earlier effort to verify it. Let's handle any more URL problems
+    # here.
+    except URLError as err:
+        print(format(err))
+    
+    # I am pretty sure there are other errors that could be caught
+    # here, but I just found the WindowsError for now. WindowsError
+    # seems to be a catch-all error, so any error not matching the
+    # above will end up here.
+    except WindowsError as err:
+        print("Unable to connect. Please check your connection and the URL and try again. Full error: {0}".format(err))
+    
+    
 
 # Finally, after writing those functions we can look at
 # actually running the program.
@@ -98,3 +156,8 @@ while not validUrl and url != "q":
 # received their command and say goodbye.
 if url == "q":
     print("Goodbye!")
+else:
+    
+    # At this point, we have a seemingly valid URL and we
+    # are going to try and run with it.
+    scanBase(url)
